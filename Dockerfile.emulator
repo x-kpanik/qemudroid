@@ -1,6 +1,6 @@
 FROM ubuntu:20.04
 
-ARG SDK_VERSION=30
+ARG SDK_VERSION=36
 ARG EMULATOR_ARCH=x86_64
 ARG JBR_VERSION=17.0.6
 
@@ -76,6 +76,12 @@ COPY hardware/config_${SDK_VERSION}.ini /root/.android/avd/emulator_${SDK_VERSIO
 # -----------------------------------------------
 
 # ----------------- Entrypoint ------------------
+# Persist the build-time selection for the entrypoint: it reads SDK_VERSION /
+# EMULATOR_ARCH at runtime (only VERSION was exported before, so any image
+# built with a non-default SDK_VERSION tried to start emulator_30 and died)
+ENV SDK_VERSION=${SDK_VERSION} \
+    EMULATOR_ARCH=${EMULATOR_ARCH}
+
 COPY scripts/prepare_snapshot.sh scripts/adb_redirect.sh scripts/run_emulator.sh scripts/entrypoint.sh /
 RUN chmod +x /entrypoint.sh /adb_redirect.sh /run_emulator.sh
 

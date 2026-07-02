@@ -5,7 +5,7 @@ SwiftShader software rendering. **No GPU required** — everything renders on
 the CPU, so it runs on any x86_64 host with KVM. Built for CI farms and basic
 automation needs.
 
-Verified boot (Android 11, `google_apis;x86_64`, boots in under a minute):
+Verified boot (Android 16, `google_apis;x86_64`, boots in under a minute):
 
 ![Booted home screen](docs/screenshot.png)
 
@@ -43,12 +43,18 @@ docker exec qemudroid adb shell getprop sys.boot_completed   # "1" when ready
 
 | Build arg | Default | Notes |
 |-----------|---------|-------|
-| `SDK_VERSION` | `30` (Android 11) | AVD profiles exist for 30–34: see `hardware/config_*.ini` |
+| `SDK_VERSION` | `36` (Android 16) | AVD profiles exist for 30–37: see `hardware/config_*.ini` |
 | `EMULATOR_ARCH` | `x86_64` | `x86` also supported |
 
 ```bash
-docker build -f Dockerfile.emulator --build-arg SDK_VERSION=34 -t qemudroid-emulator:34 .
+docker build -f Dockerfile.emulator --build-arg SDK_VERSION=35 -t qemudroid-emulator:35 .
 ```
+
+Verified working: SDK 30 (Android 11), 35 (Android 15), 36 (Android 16) — all
+boot in well under a minute. SDK 37 (Android 17): the profile is ready, but
+Google has not published a `system-images;android-37` image yet (checked
+2026-07, stable and canary channels) — the build will work as soon as it
+appears.
 
 The AVD profile (`hardware/config_<SDK>.ini`) is intentionally light for CI:
 320x480 @ 120dpi, 2 cores, 2 GB guest RAM. A running container uses ~3.3 GiB
@@ -58,7 +64,7 @@ of host RAM.
 
 | Env var | Default | Notes |
 |---------|---------|-------|
-| `SDK_VERSION` | `30` | Must match a system image baked into the image |
+| `SDK_VERSION` | build arg value | Set automatically from the build; must match a baked-in system image |
 | `EMULATOR_ARCH` | `x86_64` | |
 | `CONSOLE_PORT` / `ADB_PORT` | `5554` / `5555` | Emulator console / ADB |
 | `WINDOW` | unset | `true` renders into an X11 window (pass the X11 socket and `DISPLAY`) |
