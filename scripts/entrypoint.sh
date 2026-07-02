@@ -2,7 +2,7 @@
 
 set -ex
 
-readonly SDK_VERSION=${SDK_VERSION:-30}
+readonly SDK_VERSION=${SDK_VERSION:-36}
 readonly EMULATOR_ARCH=${EMULATOR_ARCH:-x86_64}
 readonly CONSOLE_PORT=${CONSOLE_PORT:-5554}
 readonly ADB_PORT=${ADB_PORT:-5555}
