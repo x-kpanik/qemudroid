@@ -76,7 +76,7 @@ COPY hardware/config_${SDK_VERSION}.ini /root/.android/avd/emulator_${SDK_VERSIO
 # -----------------------------------------------
 
 # ----------------- Entrypoint ------------------
-COPY prepare_snapshot.sh adb_redirect.sh run_emulator.sh entrypoint.sh /
+COPY scripts/prepare_snapshot.sh scripts/adb_redirect.sh scripts/run_emulator.sh scripts/entrypoint.sh /
 RUN chmod +x /entrypoint.sh /adb_redirect.sh /run_emulator.sh
 
 # https://developer.android.com/studio/command-line/adb#howadbworks
