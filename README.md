@@ -79,7 +79,7 @@ All ports are bound to the container's `eth0` via `socat`
 ├── Dockerfile.emulator     # emulator image: SDK + system image + AVD + entrypoint
 ├── Dockerfile.builder      # CI runner image: SDK, Marathon, allurectl
 ├── packages.txt            # SDK packages for the builder image
-├── hardware/               # AVD profiles per SDK version (config_30..34.ini)
+├── hardware/               # AVD profiles per SDK version (config_30..36.ini)
 └── scripts/
     ├── entrypoint.sh              # container entrypoint: redirect + run
     ├── run_emulator.sh            # start the QEMU emulator binary
