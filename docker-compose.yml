@@ -1,0 +1,66 @@
+# One emulator+appium pair. Scale to N pairs by running N compose projects:
+#   COMPOSE_PROJECT_NAME=pair2 APPIUM_PORT=4724 docker compose up -d --wait
+# Details and host preconditions: docs/farm.md
+
+services:
+  emulator:
+    image: qemudroid-emulator:${SDK_VERSION:-36}
+    build:
+      context: .
+      dockerfile: Dockerfile.emulator
+      args:
+        SDK_VERSION: ${SDK_VERSION:-36}
+    devices:
+      - /dev/kvm
+    # No ports published: only the appium sidecar talks to the emulator,
+    # over the compose network. For manual debugging use:
+    #   docker compose exec emulator adb shell
+    healthcheck:
+      test: ["CMD-SHELL", "adb shell getprop sys.boot_completed | grep -q 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 20s
+    restart: unless-stopped
+
+  appium:
+    image: qemudroid-appium:${APPIUM_VERSION:-2.15.0}
+    build:
+      context: .
+      dockerfile: Dockerfile.appium
+    depends_on:
+      emulator:
+        condition: service_healthy
+    environment:
+      EMULATOR_HOST: emulator
+      EMULATOR_ADB_PORT: "5555"
+    # 0.0.0.0 by default: on a farm server the test runner connects remotely.
+    # Restrict with APPIUM_BIND=127.0.0.1 for a local-only setup.
+    ports:
+      - "${APPIUM_BIND:-0.0.0.0}:${APPIUM_PORT:-4723}:4723"
+    # The APK under test must be visible to the Appium SERVER: the `app`
+    # capability is a path on this container's filesystem. Drop the APK into
+    # ./apk on the host and point the suite's `app` capability at /apk/<name>.apk.
+    volumes:
+      - ${APK_DIR:-./apk}:/apk:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:4723/status | grep -q '\"ready\":true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  # Optional Allure report server: start with `--profile reports`.
+  # Copy allure-results from a suite run into ./allure-results; the service
+  # picks them up and serves the report (see docs/farm.md).
+  allure:
+    image: frankescobar/allure-docker-service:2.27.0
+    profiles: ["reports"]
+    environment:
+      CHECK_RESULTS_EVERY_SECONDS: "5"
+      KEEP_HISTORY: "1"
+    ports:
+      - "${ALLURE_PORT:-5050}:5050"
+    volumes:
+      - ${ALLURE_RESULTS_DIR:-./allure-results}:/app/allure-results
+    restart: unless-stopped

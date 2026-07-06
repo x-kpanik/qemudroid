@@ -12,9 +12,40 @@ Verified boot (Android 16, `google_apis;x86_64`, boots in under a minute):
 ## Requirements
 
 - x86_64 host with KVM enabled (`/dev/kvm`)
-- Docker
+- Docker with the compose plugin
 
-## Quick start
+## Quick start: emulator + Appium pair
+
+The intended way to consume this repo: `docker compose` brings up an
+**emulator container and an Appium sidecar container** wired together over
+the compose network. The test runner only ever talks to the Appium port —
+no adb on the host, nothing bound to localhost by default.
+
+```bash
+docker compose build          # emulator (SDK 36) + appium (pinned 2.15.0)
+
+mkdir -p apk && cp /path/to/app-under-test.apk apk/
+docker compose up -d --wait   # blocks until Android is booted and Appium is ready
+
+curl -s http://localhost:4723/status        # {"value":{"ready":true,...}}
+```
+
+Run a suite against it (the `app` capability is a path **inside the appium
+container**, i.e. under the mounted `/apk`):
+
+```bash
+./gradlew test --rerun \
+    -Dappium.url=http://<host>:4723 \
+    -Dapp.apk=/apk/app-under-test.apk
+```
+
+The appium sidecar waits for full boot and disables window animations itself,
+so a fresh pair is immediately suite-ready. Multiple pairs, host
+preconditions, sizing, and the Allure report server: see **[docs/farm.md](docs/farm.md)**.
+
+## Quick start: bare emulator
+
+For a single emulator with adb from the host:
 
 ```bash
 # 1. Build the emulator image (~6.7 GB: Android SDK + system image + AVD)
@@ -45,6 +76,7 @@ docker exec qemudroid adb shell getprop sys.boot_completed   # "1" when ready
 |-----------|---------|-------|
 | `SDK_VERSION` | `36` (Android 16) | AVD profiles exist for 30–37: see `hardware/config_*.ini` |
 | `EMULATOR_ARCH` | `x86_64` | `x86` also supported |
+| `APPIUM_VERSION` / `UIAUTOMATOR2_VERSION` | `2.15.0` / `3.9.8` (Dockerfile.appium) | keep in sync with the suite's pinned toolchain |
 
 ```bash
 docker build -f Dockerfile.emulator --build-arg SDK_VERSION=35 -t qemudroid-emulator:35 .
@@ -60,7 +92,7 @@ The AVD profile (`hardware/config_<SDK>.ini`) is intentionally light for CI:
 320x480 @ 120dpi, 2 cores, 2 GB guest RAM. A running container uses ~3.3 GiB
 of host RAM.
 
-## Runtime options
+## Runtime options (emulator container)
 
 | Env var | Default | Notes |
 |---------|---------|-------|
@@ -75,38 +107,42 @@ of host RAM.
 |------|---------|
 | 5037 | ADB server |
 | 5554 | Emulator console |
-| 5555 | ADB (connect here from the host) |
+| 5555 | ADB |
 | 5900 | VNC (exposed, not started by default) |
+| 4723 | Appium (the only port a compose pair publishes) |
 
-All ports are bound to the container's `eth0` via `socat`
-(`scripts/adb_redirect.sh`), so plain `docker -p` mappings work.
+All emulator ports are bound to the container's `eth0` via `socat`
+(`scripts/adb_redirect.sh`), so plain `docker -p` mappings work — but in the
+compose pair none of them are published: only the Appium sidecar reaches the
+emulator, over the compose network.
 
 ## Repository layout
 
 ```
 .
+├── docker-compose.yml      # emulator + appium pair (+ optional allure server)
 ├── Dockerfile.emulator     # emulator image: SDK + system image + AVD + entrypoint
-├── Dockerfile.builder      # CI runner image: SDK, Marathon, allurectl
+├── Dockerfile.appium       # appium sidecar: pinned appium + uiautomator2 + adb
+├── Dockerfile.builder      # legacy CI runner image (Marathon + allurectl)
 ├── packages.txt            # SDK packages for the builder image
-├── hardware/               # AVD profiles per SDK version (config_30..34.ini)
+├── hardware/               # AVD profiles per SDK version (config_30..37.ini)
+├── docs/farm.md            # farm server: preconditions, scaling, Allure
 └── scripts/
-    ├── entrypoint.sh              # container entrypoint: redirect + run
+    ├── entrypoint.sh              # emulator container entrypoint: redirect + run
     ├── run_emulator.sh            # start the QEMU emulator binary
     ├── adb_redirect.sh            # socat: expose adb/console ports on eth0
     ├── prepare_snapshot.sh        # boot once and save a "ci" snapshot
     ├── wait_for_device.sh         # block until sys.boot_completed=1
-    ├── await_devices.sh           # wait for N devices (CI)
-    ├── check_device_size.sh       # sanity-check screen size
-    ├── copy_apks.sh               # CI helper: collect APKs
-    ├── install_apks.sh            # CI helper: install APKs on all devices
-    └── upload_allure_results.sh   # CI helper: push results via allurectl
+    └── appium_entrypoint.sh       # appium container entrypoint: wait, connect, serve
 ```
 
-## CI builder image
+## Legacy CI builder image
 
-`Dockerfile.builder` is a separate image for running test suites against the
-emulator: Android SDK + [Marathon](https://github.com/MarathonLabs/marathon)
-test runner + [allurectl](https://github.com/allure-framework/allurectl).
+`Dockerfile.builder` is the old Marathon-based runner image (Android SDK +
+[Marathon](https://github.com/MarathonLabs/marathon) +
+[allurectl](https://github.com/allure-framework/allurectl)). The compose pair
+above replaces it for Appium suites; it is kept only for Marathon-style
+sharded runs and may be removed later.
 
 ```bash
 docker build -f Dockerfile.builder -t qemudroid-builder:latest .
