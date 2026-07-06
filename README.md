@@ -1,17 +1,14 @@
 # qemudroid (android-in-docker-qemu)
 
 Google Android Emulator (AVD) running headless in Docker: QEMU + KVM with
-SwiftShader software rendering. **No GPU required** — everything renders on
-the CPU, so it runs on any x86_64 host with KVM. Built for CI farms and basic
-automation needs.
-
-Verified boot (Android 16, `google_apis;x86_64`, boots in under a minute):
+SwiftShader software rendering.
+**No GPU required**. Everything renders on the CPU.
 
 ![Booted home screen](docs/screenshot.png)
 
 ## Requirements
 
-- x86_64 host with KVM enabled (`/dev/kvm`)
+- x86_64 host with KVM (`/dev/kvm`)
 - Docker with the compose plugin
 
 ## Quick start: emulator + Appium pair
@@ -82,15 +79,9 @@ docker exec qemudroid adb shell getprop sys.boot_completed   # "1" when ready
 docker build -f Dockerfile.emulator --build-arg SDK_VERSION=35 -t qemudroid-emulator:35 .
 ```
 
-Verified working: SDK 30 (Android 11), 35 (Android 15), 36 (Android 16) — all
-boot in well under a minute. SDK 37 (Android 17): the profile is ready, but
-Google has not published a `system-images;android-37` image yet (checked
-2026-07, stable and canary channels) — the build will work as soon as it
-appears.
-
-The AVD profile (`hardware/config_<SDK>.ini`) is intentionally light for CI:
-320x480 @ 120dpi, 2 cores, 2 GB guest RAM. A running container uses ~3.3 GiB
-of host RAM.
+The AVD profile (`hardware/config_<SDK>.ini`):
+320x480 @ 120dpi, 2 cores, 2 GB guest RAM. 
+A running container uses ~3.3 GiB of host RAM.
 
 ## Runtime options (emulator container)
 
@@ -107,8 +98,8 @@ of host RAM.
 |------|---------|
 | 5037 | ADB server |
 | 5554 | Emulator console |
-| 5555 | ADB |
-| 5900 | VNC (exposed, not started by default) |
+| 5555 | ADB (connect here from the host) |
+| 5900 | VNC (exposed, false by default) |
 | 4723 | Appium (the only port a compose pair publishes) |
 
 All emulator ports are bound to the container's `eth0` via `socat`
