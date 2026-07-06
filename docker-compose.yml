@@ -50,6 +50,20 @@ services:
       retries: 30
     restart: unless-stopped
 
+  # Optional adb access to the pair's emulator: start with `--profile adb`.
+  # Off by default (the closed topology exposes only Appium). Needed for
+  # adb-based runners like Marathon: `adb connect <host>:5555` after up.
+  adb-bridge:
+    image: alpine/socat:1.8.0.0
+    profiles: ["adb"]
+    depends_on:
+      emulator:
+        condition: service_healthy
+    command: tcp-listen:5555,fork,reuseaddr tcp:emulator:5555
+    ports:
+      - "${ADB_BIND:-127.0.0.1}:${ADB_PORT:-5555}:5555"
+    restart: unless-stopped
+
   # Optional Allure report server: start with `--profile reports`.
   # Copy allure-results from a suite run into ./allure-results; the service
   # picks them up and serves the report (see docs/farm.md).

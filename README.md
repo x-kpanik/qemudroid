@@ -136,14 +136,26 @@ emulator, over the compose network.
     └── appium_entrypoint.sh       # appium container entrypoint: wait, connect, serve
 ```
 
-## Legacy CI builder image
+## Marathon / adb-based runners
 
-`Dockerfile.builder` is the old Marathon-based runner image (Android SDK +
-[Marathon](https://github.com/MarathonLabs/marathon) +
-[allurectl](https://github.com/allure-framework/allurectl)). The compose pair
-above replaces it for Appium suites; it is kept only for Marathon-style
-sharded runs and may be removed later.
+The compose pair covers Appium suites; runners that need raw adb access —
+e.g. [Marathon](https://github.com/MarathonLabs/marathon) for sharded
+instrumentation runs — can reach a pair's emulator through the optional
+`adb` profile (a socat bridge, off by default so the closed topology stays
+Appium-only):
+
+```bash
+docker compose --profile adb up -d
+adb connect localhost:5555        # ADB_PORT/ADB_BIND to customize
+```
+
+`Dockerfile.builder` is the runner image for that flow (Android SDK +
+Marathon + [allurectl](https://github.com/allure-framework/allurectl)):
 
 ```bash
 docker build -f Dockerfile.builder -t qemudroid-builder:latest .
 ```
+
+Alternatively, attach any runner container straight to a pair's network,
+no published ports at all:
+`docker run --network <project>_default ... adb connect emulator:5555`.
