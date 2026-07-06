@@ -19,7 +19,7 @@ the compose network. The test runner only ever talks to the Appium port —
 no adb on the host, nothing bound to localhost by default.
 
 ```bash
-docker compose build          # emulator (SDK 36) + appium (pinned 2.15.0)
+docker compose build          # emulator SDK 36 + appium sidecar
 
 mkdir -p apk && cp /path/to/app-under-test.apk apk/
 docker compose up -d --wait   # blocks until Android is booted and Appium is ready
@@ -73,7 +73,7 @@ docker exec qemudroid adb shell getprop sys.boot_completed   # "1" when ready
 |-----------|---------|-------|
 | `SDK_VERSION` | `36` (Android 16) | AVD profiles exist for 30–37: see `hardware/config_*.ini` |
 | `EMULATOR_ARCH` | `x86_64` | `x86` also supported |
-| `APPIUM_VERSION` / `UIAUTOMATOR2_VERSION` | `2.15.0` / `3.9.8` (Dockerfile.appium) | keep in sync with the suite's pinned toolchain |
+| `APPIUM_VERSION` / `UIAUTOMATOR2_VERSION` | `2.16.2` / `3.9.8` in Dockerfile.appium | keep in sync with the suite pins |
 
 ```bash
 docker build -f Dockerfile.emulator --build-arg SDK_VERSION=35 -t qemudroid-emulator:35 .
