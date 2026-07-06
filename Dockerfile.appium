@@ -1,7 +1,7 @@
 FROM node:20-bookworm-slim
 
 # Pin the same appium and driver versions your test suite pins.
-ARG APPIUM_VERSION=2.15.0
+ARG APPIUM_VERSION=2.16.2
 ARG UIAUTOMATOR2_VERSION=3.9.8
 
 # The JRE is for apksigner.jar which the driver runs to check APK signatures.
