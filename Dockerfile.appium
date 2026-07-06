@@ -1,0 +1,39 @@
+FROM node:20-bookworm-slim
+
+# Pin the same appium and driver versions your test suite pins.
+ARG APPIUM_VERSION=2.15.0
+ARG UIAUTOMATOR2_VERSION=3.9.8
+
+# The JRE is for apksigner.jar which the driver runs to check APK signatures.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl unzip ca-certificates \
+        openjdk-17-jre-headless && \
+    rm -rf /var/lib/apt/lists/*
+
+# Official platform-tools and build-tools: the driver needs adb, aapt2 and
+# apksigner. Debian packages are too old for current devices.
+ARG BUILD_TOOLS_RELEASE=r36
+ARG BUILD_TOOLS_DIR=36.0.0
+RUN curl -fsSL https://dl.google.com/android/repository/platform-tools-latest-linux.zip \
+        -o /tmp/platform-tools.zip && \
+    unzip -q /tmp/platform-tools.zip -d /opt/android-sdk && \
+    rm /tmp/platform-tools.zip && \
+    curl -fsSL https://dl.google.com/android/repository/build-tools_${BUILD_TOOLS_RELEASE}_linux.zip \
+        -o /tmp/build-tools.zip && \
+    unzip -q /tmp/build-tools.zip -d /tmp/build-tools && \
+    mkdir -p /opt/android-sdk/build-tools && \
+    mv /tmp/build-tools/* /opt/android-sdk/build-tools/${BUILD_TOOLS_DIR} && \
+    rm -rf /tmp/build-tools.zip /tmp/build-tools
+ENV ANDROID_HOME=/opt/android-sdk \
+    PATH=$PATH:/opt/android-sdk/platform-tools
+
+RUN npm install -g appium@${APPIUM_VERSION} && \
+    appium driver install uiautomator2@${UIAUTOMATOR2_VERSION}
+
+COPY scripts/appium_entrypoint.sh /appium_entrypoint.sh
+RUN chmod +x /appium_entrypoint.sh
+
+# Appium server port
+EXPOSE 4723
+
+ENTRYPOINT ["/appium_entrypoint.sh"]

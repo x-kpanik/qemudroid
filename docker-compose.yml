@@ -1,0 +1,76 @@
+# One emulator plus appium pair. Scale to N pairs by running N compose projects:
+#   COMPOSE_PROJECT_NAME=pair2 APPIUM_PORT=4724 docker compose up -d --wait
+# Details and host preconditions: docs/farm.md
+
+services:
+  emulator:
+    image: qemudroid-emulator:${SDK_VERSION:-36}
+    build:
+      context: .
+      dockerfile: Dockerfile.emulator
+      args:
+        SDK_VERSION: ${SDK_VERSION:-36}
+    devices:
+      - /dev/kvm
+    # No ports published: only the appium sidecar talks to the emulator.
+    # For manual debugging: docker compose exec emulator adb shell
+    healthcheck:
+      test: ["CMD-SHELL", "adb shell getprop sys.boot_completed | grep -q 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 20s
+    restart: unless-stopped
+
+  appium:
+    image: qemudroid-appium:${APPIUM_VERSION:-2.15.0}
+    build:
+      context: .
+      dockerfile: Dockerfile.appium
+    depends_on:
+      emulator:
+        condition: service_healthy
+    environment:
+      EMULATOR_HOST: emulator
+      EMULATOR_ADB_PORT: "5555"
+    # 0.0.0.0 by default so a remote runner can connect.
+    # Set APPIUM_BIND=127.0.0.1 for a local-only setup.
+    ports:
+      - "${APPIUM_BIND:-0.0.0.0}:${APPIUM_PORT:-4723}:4723"
+    # The app capability path is resolved inside this container. Drop the APK
+    # into ./apk on the host and reference it as /apk/name.apk in the suite.
+    volumes:
+      - ${APK_DIR:-./apk}:/apk:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:4723/status | grep -q '\"ready\":true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  # Optional adb access for runners like Marathon. Off by default.
+  # Start with --profile adb, then: adb connect host:5555
+  adb-bridge:
+    image: alpine/socat:1.8.0.0
+    profiles: ["adb"]
+    depends_on:
+      emulator:
+        condition: service_healthy
+    command: tcp-listen:5555,fork,reuseaddr tcp:emulator:5555
+    ports:
+      - "${ADB_BIND:-127.0.0.1}:${ADB_PORT:-5555}:5555"
+    restart: unless-stopped
+
+  # Optional Allure report server. Start with --profile reports and copy
+  # allure-results from a suite run into ./allure-results.
+  allure:
+    image: frankescobar/allure-docker-service:2.27.0
+    profiles: ["reports"]
+    environment:
+      CHECK_RESULTS_EVERY_SECONDS: "5"
+      KEEP_HISTORY: "1"
+    ports:
+      - "${ALLURE_PORT:-5050}:5050"
+    volumes:
+      - ${ALLURE_RESULTS_DIR:-./allure-results}:/app/allure-results
+    restart: unless-stopped
