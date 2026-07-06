@@ -23,7 +23,7 @@ services:
     restart: unless-stopped
 
   appium:
-    image: qemudroid-appium:${APPIUM_VERSION:-2.15.0}
+    image: qemudroid-appium:${APPIUM_VERSION:-2.16.2}
     build:
       context: .
       dockerfile: Dockerfile.appium
