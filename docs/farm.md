@@ -99,26 +99,15 @@ the farm host (the runner needs only a JDK — no adb, no Android SDK):
 
 ## Allure reports
 
-The suite writes Allure results on the runner side to
-`appium-tests/build/allure-results/`. The farm serves them:
+The suite writes Allure results on the runner side, e.g. to
+`build/allure-results/`. The farm serves them:
 
 ```bash
 docker compose --profile reports up -d allure
 # after a suite run, drop the results into the watched directory:
-rsync -a --delete appium-tests/build/allure-results/ <farm-host>:<farm-dir>/allure-results/
+rsync -a --delete build/allure-results/ <farm-host>:<farm-dir>/allure-results/
 ```
 
 Report UI: `http://<farm-host>:5050/allure-docker-service/projects/default/reports/latest/index.html`
 (the service regenerates the report automatically every few seconds when new
 results land; history is kept between runs).
-
-## Troubleshooting
-
-| Symptom | Cause / fix |
-|---|---|
-| emulator container unhealthy > 3 min | almost always missing/inaccessible `/dev/kvm`; `docker compose logs emulator` |
-| `SessionNotCreatedException: ConnectException` in tests | appium container not up/healthy — `docker compose ps`, `curl :4723/status` |
-| suite is green in 11 s | it did not run (server was down and every session failed fast, or Gradle cache served) — check the real per-test verdicts in the log/XML |
-| `INSTALL_FAILED_*` on first session | broken/missing APK in `./apk`; the mount is read-only, replace the file on the host |
-| two adb entries for one device on a workstation | you ran `adb connect` against the farm; `adb disconnect` — the farm itself never needs it |
-| port already allocated on `up` | another pair owns it — pick a different `APPIUM_PORT`/`COMPOSE_PROJECT_NAME` |
