@@ -1,19 +1,17 @@
 FROM node:20-bookworm-slim
 
-# Pin the exact toolchain your test suite expects (e.g. what its package.json
-# pins), so the farm and local runs test through identical versions.
+# Pin the same appium and driver versions your test suite pins.
 ARG APPIUM_VERSION=2.15.0
 ARG UIAUTOMATOR2_VERSION=3.9.8
 
-# JRE: appium-adb runs apksigner.jar (signature check on install) via java.
+# The JRE is for apksigner.jar which the driver runs to check APK signatures.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl unzip ca-certificates \
         openjdk-17-jre-headless && \
     rm -rf /var/lib/apt/lists/*
 
-# Official platform-tools (adb) + build-tools (aapt2/apksigner: the driver
-# parses and verifies the APK behind the `app` capability with them).
-# Debian's android-tools-adb is too old for API 36 devices.
+# Official platform-tools and build-tools: the driver needs adb, aapt2 and
+# apksigner. Debian packages are too old for current devices.
 ARG BUILD_TOOLS_RELEASE=r36
 ARG BUILD_TOOLS_DIR=36.0.0
 RUN curl -fsSL https://dl.google.com/android/repository/platform-tools-latest-linux.zip \
@@ -35,7 +33,7 @@ RUN npm install -g appium@${APPIUM_VERSION} && \
 COPY scripts/appium_entrypoint.sh /appium_entrypoint.sh
 RUN chmod +x /appium_entrypoint.sh
 
-# 4723 - Appium server (bound to 0.0.0.0: clients connect from outside)
+# Appium server port
 EXPOSE 4723
 
 ENTRYPOINT ["/appium_entrypoint.sh"]
