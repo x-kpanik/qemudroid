@@ -79,8 +79,8 @@ docker exec qemudroid adb shell getprop sys.boot_completed   # "1" when ready
 docker build -f Dockerfile.emulator --build-arg SDK_VERSION=35 -t qemudroid-emulator:35 .
 ```
 
-The AVD profile (`hardware/config_<SDK>.ini`):
-320x480 @ 120dpi, 2 cores, 2 GB guest RAM. 
+The AVD profile (`hardware/config_<SDK>.ini`) uses the Pixel 6 display:
+1080x2400 @ 420dpi, 2 cores, 2 GB guest RAM.
 A running container uses ~3.3 GiB of host RAM.
 
 ## Runtime options (emulator container)
